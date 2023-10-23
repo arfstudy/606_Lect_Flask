@@ -1,8 +1,7 @@
 from typing import Type, Union
 
 import pydantic
-from app import app
-from flask import Flask, app, jsonify, request
+from flask import Flask, jsonify, request
 from flask.views import MethodView
 from sqlalchemy.exc import IntegrityError
 
@@ -19,8 +18,8 @@ class HttpError(Exception):
         self.message = message
 
 
-@app.errorhandler(HttpError)
 def error_handler(er):
+    # Перехватывает исключения и останавливает выполнение программы
     response = jsonify({"status": "error", "message": er.message})
     response.status_code = er.status_code
     return response
@@ -37,7 +36,7 @@ def validate(validation_schema: Union[Type[CreateUser], Type[UpdateUser]], json_
 def get_user(session: Session, user_id: int):
     user = session.get(User, user_id)
     if user is None:
-        raise HttpError(404, "user not found")
+        raise HttpError(404, "User not found")
     return user
 
 
@@ -49,7 +48,7 @@ class UserViews(MethodView):
                 {
                     "id": user_id,
                     "name": user.name,
-                    "creation_time": user.creation_time.isoformat(),
+                    "creation_time": user.creation_time.isoformat(),    # Преобразует дату в строчку, для JSON.
                 }
             )
 
@@ -57,7 +56,7 @@ class UserViews(MethodView):
         validated_data = validate(CreateUser, request.json)
         validated_data["password"] = hash_password(validated_data["password"])
         with Session() as session:
-            new_user = User(request.json)
+            new_user = User(**request.json)
             session.add(new_user)
             try:
                 session.commit()
@@ -65,23 +64,27 @@ class UserViews(MethodView):
                 raise HttpError(409, "User already exist")
             return jsonify({"id": new_user.id})
 
-    def patch(self, user_id):
+    def patch(self, user_id: int):
         validated_data = validate(UpdateUser, request.json)
         if "password" in validated_data:
             validated_data["password"] = hash_password(validated_data["password"])
         with Session() as session:
             user = get_user(session, user_id)
-            for fild, value in validated_data.items():
-                setattr(user, fild, value)
+            for field, value in validated_data.items():
+                setattr(user, field, value)
             session.add(user)
             try:
                 session.commit()
             except IntegrityError as er:
-                raise HttpError(409, "user already exist")
+                raise HttpError(409, "User already exist")
             return jsonify({"id": user.id})
 
-    def delete(self):
-        pass
+    def delete(self, user_id: int):
+        with Session() as session:
+            user = get_user(session, user_id)
+            session.delete(user)
+            session.commit()
+            return jsonify({"Status": "Delete"})
 
 
 user_view = UserViews.as_view("users")
