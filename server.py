@@ -1,6 +1,7 @@
 from typing import Type, Union
 
 import pydantic
+from app import app
 from flask import Flask, app, jsonify, request
 from flask.views import MethodView
 from sqlalchemy.exc import IntegrityError
@@ -18,7 +19,7 @@ class HttpError(Exception):
         self.message = message
 
 
-# @app.errorhandler(HttpError)
+@app.errorhandler(HttpError)
 def error_handler(er):
     response = jsonify({"status": "error", "message": er.message})
     response.status_code = er.status_code
@@ -61,7 +62,7 @@ class UserViews(MethodView):
             try:
                 session.commit()
             except IntegrityError as er:
-                raise HttpError(409, "user already exist")
+                raise HttpError(409, "User already exist")
             return jsonify({"id": new_user.id})
 
     def patch(self, user_id):
@@ -88,23 +89,24 @@ user_view = UserViews.as_view("users")
 
 # def hello_world(some_id):
 #     """ Простая вьюшка """
-#     json_data = request.json
+#     json_data = request.json                  # Получаем запрос
 #     headers = request.headers
 #     qs = request.args
+#     print('  Получен запрос:')
 #     print(some_id)
 #     print(json_data)
 #     print(headers)
 #     print(qs)
 #
-#     response = jsonify({"hello": "world"})
-#     print(response)
+#     response = jsonify({"hello": "world"})    # Формируем ответ
+#     print(f'  Наш ответ: {response.json}')
 #     return response
-
+#     print(f'\n Hi, id = {some_id} !!!')
+#
 # firstapp.add_url_rule('/hello/world/<int:some_id>', view_func=hello_world, methods=['POST'])
 
-firstapp.add_url_rule(
-    "/user/<int:user_id>", view_func=user_view, methods=["GET", "PATCH", "DELETE"]
-)
+firstapp.add_url_rule("/user/<int:user_id>", view_func=user_view, methods=["GET", "PATCH", "DELETE"])
+
 firstapp.add_url_rule("/user", view_func=user_view, methods=["POST"])
 
 if __name__ == "__main__":

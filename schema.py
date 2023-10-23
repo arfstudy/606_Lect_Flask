@@ -10,7 +10,7 @@ class CreateUser(BaseModel):
     @field_validator("password")
     def secure_password(cls, value):
         if len(value) < 8:
-            raise ValueError("Password is to short")
+            raise ValueError("Password is not to short")
         return value
 
 
